@@ -8,11 +8,11 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
-import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.Xfermode;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
 
 import java.util.Random;
@@ -27,9 +27,10 @@ public class LoveView extends View {
 
     //文字相关配置
     String mContent = "Ting";
+    int mContentTextSize = 300;
     int mContentWidth;
 
-    //曲线相关配置
+    //曲线相关参数-------------------------------------------------------------------------
     Shader mLinearShader = new LinearGradient(0, 0,
             getResources().getDisplayMetrics().widthPixels, 0,
             new int[]{
@@ -38,41 +39,28 @@ public class LoveView extends View {
                     Color.parseColor("#906866")},
             null,
             Shader.TileMode.MIRROR);
+
     Xfermode pdXferMode = new PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP);
 
     Path mPath = new Path();
+
     private final Random mRandom = new Random(System.currentTimeMillis());
+    float mTextBaseLine = mContentTextSize + 100;
+    float mStartLine = mTextBaseLine + mContentTextSize / 2;
+    float mEndLine = mStartLine;
+    private float mSpan;
+
     float[] mCtlPoints = new float[SPAN_COUNT * 2];
     float[] mEndPoints = new float[SPAN_COUNT * 2];
 
-    float baseLine = 400;
-    private float mSpan;
-
-    public void setBaseLine(float baseLine) {
-        this.baseLine = baseLine;
-
-        for (int i = 0; i < mCtlPoints.length; i += 2) {
-            mCtlPoints[i + 1] = baseLine - mRandom.nextInt(50);
-        }
-
-        for (int i = 0; i < mEndPoints.length; i += 2) {
-            mEndPoints[i + 1] = baseLine;
-        }
-        invalidate();
-    }
-
-    public float getBaseLine() {
-        return baseLine;
-    }
+    //曲线相关配置-------------------------------------------------------------------------
 
     {
-        //对View设置硬件加速
-//        setLayerType(LAYER_TYPE_HARDWARE, null);
-
         //计算content文字的宽度
         float[] charWidths = new float[mContent.length()];
-        mPaint.setTextSize(300);
+        mPaint.setTextSize(mContentTextSize);
         mPaint.getTextWidths(mContent, charWidths);
+
         for (float charWidth : charWidths) {
             mContentWidth += charWidth;
         }
@@ -81,17 +69,41 @@ public class LoveView extends View {
 
         for (int i = 0; i < mCtlPoints.length; i += 2) {
             mCtlPoints[i] = (i + 1) * mSpan - mSpan / 2;
-            mCtlPoints[i + 1] = baseLine - mRandom.nextInt(50);
+            mCtlPoints[i + 1] = mEndLine + mRandom.nextInt(50);
         }
 
         for (int i = 0; i < mEndPoints.length; i += 2) {
             mEndPoints[i] = (i + 1) * mSpan;
-            mEndPoints[i + 1] = baseLine;
+            mEndPoints[i + 1] = mEndLine;
         }
     }
 
     public LoveView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
+    }
+
+    /**
+     * 贝塞尔曲线上涨高度的dy
+     *
+     * @param dy
+     * @return 是否已经填满了文字
+     */
+    public boolean letUsRise(float dy) {
+        if (mEndLine < mTextBaseLine - mContentTextSize) {
+            return true;
+        }
+
+        mEndLine -= dy;
+
+        for (int i = 0; i < mCtlPoints.length; i += 2) {
+            mCtlPoints[i + 1] = mEndLine + mRandom.nextInt(50);
+        }
+
+        for (int i = 0; i < mEndPoints.length; i += 2) {
+            mEndPoints[i + 1] = mEndLine;
+        }
+        postInvalidate();
+        return false;
     }
 
     @Override
@@ -102,22 +114,26 @@ public class LoveView extends View {
                 getResources().getDisplayMetrics().heightPixels,
                 null, Canvas.ALL_SAVE_FLAG);
 
-        //绘制文字部分
+        //绘制文字部分，作为PorterDuff.Mode的DST
         mPaint.setStyle(Paint.Style.FILL);
         mPaint.setColor(Color.BLACK);
-        mPaint.setTextSize(300);
-        canvas.drawText(mContent, 0, 400, mPaint);
+        mPaint.setFakeBoldText(true);
+        mPaint.setTextSize(mContentTextSize);
+        canvas.drawText(mContent, 0, mTextBaseLine, mPaint);
 
+        //绘制贝塞尔曲线，作为PorterDuff.Mode的SRC
         mPaint.setShader(mLinearShader);
         mPaint.setXfermode(pdXferMode);
         mPath.reset();
-        mPath.moveTo(0, 400 + 100);
+        mPath.moveTo(0, mStartLine);
+        mPath.lineTo(0, mEndLine);
         for (int i = 0; i < mCtlPoints.length; i += 2) {
             mPath.quadTo(mCtlPoints[i], mCtlPoints[i + 1], mEndPoints[i], mEndPoints[i + 1]);
         }
-        mPath.lineTo(mEndPoints[mEndPoints.length - 2], 400 + 100);
+        mPath.lineTo(mContentWidth, mStartLine);
         mPath.close();
         canvas.drawPath(mPath, mPaint);
+        mPaint.setShader(null);
         mPaint.setXfermode(null);
         canvas.restoreToCount(saved);
     }
