@@ -20,9 +20,9 @@ public class MainActivity extends AppCompatActivity {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                        if(mCoala.letUsRise(15)) timer.cancel();
+                        if(mCoala.letUsRise(5)) timer.cancel();
             }
-        }, 2000, 1000);
+        }, 2000, 300);
 
     }
 }

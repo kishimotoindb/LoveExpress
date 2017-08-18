@@ -26,8 +26,8 @@ public class LoveView extends View {
     Paint mPaint = new Paint();
 
     //文字相关配置
-    String mContent = "Ting";
-    int mContentTextSize = 300;
+    String mContent = "ting";
+    int mContentTextSize = 150;
     int mContentWidth;
 
     //曲线相关参数-------------------------------------------------------------------------
